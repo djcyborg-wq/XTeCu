@@ -69,6 +69,12 @@ Bot, woran er noch arbeitet und wie lange schon — die Nachricht wird nicht
 heimlich in eine Warteschlange gelegt. Der Dienst bleibt dabei ansprechbar:
 `/stop` und `/status` kommen auch mitten in einem langen Lauf durch.
 
+Ein Lauf kann Minuten dauern. Damit man nicht vor einem stummen Chat sitzt,
+bleibt die Tippanzeige durchgehend stehen, nach 75 Sekunden kommt eine kurze
+Zwischenmeldung und danach alle drei Minuten eine weitere. Nach 15 Minuten
+bricht der Bot ab — weil immer nur ein Auftrag läuft, würde ein stiller Lauf
+sonst alle weiteren Fragen blockieren.
+
 Am Fuß jeder Antwort stehen Projekt, Modell und die Dauer des Laufs.
 
 ## Das Modell wechseln
@@ -155,6 +161,12 @@ unterlagen = ["README.md"]
 `unterlagen` sind die Dateien, die der Agent zu Beginn einer Sitzung liest —
 das Gedächtnis des Projekts. `einweisung` und `unterlagen` dürfen fehlen, dann
 fängt der Agent bei null an.
+
+Dort gehören **nur kurze Dateien** hinein. In XFlops stand anfangs auch das
+Umstellungsdokument mit 170.000 Zeichen darin; die erste Frage einer Sitzung
+brauchte damit über sechs Minuten, weil der Agent sich erst durch alles las.
+Lange Dokumente nennt man besser in der `einweisung` als Nachschlagewerk, mit
+dem ausdrücklichen Hinweis, sie nicht auf Verdacht zu lesen.
 
 ## Sicherheit
 
