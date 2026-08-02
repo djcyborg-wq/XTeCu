@@ -1,0 +1,36 @@
+# Welche Projekte der Bot bedienen kann.
+#
+# Ein neues Projekt sind fuenf Zeilen hier - der Bot selbst bleibt unberuehrt.
+# "unterlagen" sind die Dateien, in denen der Projektstand samt Begruendungen
+# steht. Der Agent kennt den Chatverlauf nicht, wohl aber diese Dateien; sie
+# sind sein Gedaechtnis ueber Sitzungen hinweg.
+
+standard = "xflops"
+
+[projekt.xflops]
+name = "XFlops"
+pfad = "C:/Users/dj_cyborg/XFlops"
+modell = "composer-2.5"
+einweisung = """
+XFlops sucht abgestuerzte US-Aktien ("Flops"), prognostiziert per ML den
+Rebound und handelt ihn ueber Alpaca. Die Produktion laeuft auf einem
+Hetzner-Server unter https://62.238.11.179, der Handel im Alpaca-Uebungskonto.
+Backend: FastAPI unter backend/app, Oberflaeche: React unter frontend/src.
+
+Halte dich an die Projektregeln in .cursor/rules. Antworte auf Deutsch.
+Wenn du etwas aenderst, sag klar, ob es nur lokal liegt oder schon auf dem
+Server ist - ausgerollt wird mit deploy/push.ps1.
+"""
+unterlagen = [
+  "docs/16_alpaca_umstellung_2026-07.md",
+  "docs/18_berechnungsgrundlagen_abgaben.md",
+]
+
+# Vorlage fuer weitere Projekte:
+#
+# [projekt.beispiel]
+# name = "Mein Projekt"
+# pfad = "C:/Users/dj_cyborg/Beispiel"
+# modell = "composer-2.5"
+# einweisung = "Worum es geht, in wenigen Saetzen."
+# unterlagen = ["README.md"]

@@ -1,0 +1,6 @@
+.env
+.venv/
+zustand/
+__pycache__/
+*.pyc
+_pruefe_*.py
