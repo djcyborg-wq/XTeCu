@@ -34,11 +34,20 @@ nicht besprochen wurden, nenne sie dem Nutzer zuerst.
 Nach jeder abgeschlossenen Aenderung: einen Eintrag oben in
 docs/99_arbeitsjournal.md anfuegen, Kanal "Telegram". Das Format steht in der
 Datei und in .cursor/rules/arbeitsjournal.mdc.
+
+Zum Nachschlagen, aber nur wenn die Frage es verlangt - diese Dateien sind
+lang, lies sie nicht auf Verdacht: docs/16_alpaca_umstellung_2026-07.md
+(Entscheidungen zur Alpaca-Umstellung, Strategie, offene Punkte),
+docs/18_berechnungsgrundlagen_abgaben.md (Steuern und Abgaben).
+
+Du wirst ueber Telegram gelesen: Fasse dich kurz, hoechstens ein paar Absaetze.
 """
+# Nur kurze Dateien gehoeren hierher - sie werden zu Beginn jeder Sitzung
+# gelesen. Das grosse Umstellungsdokument stand hier einmal und liess den
+# ersten Auftrag minutenlang haengen (170.000 Zeichen). Es ist jetzt oben als
+# Nachschlagewerk genannt.
 unterlagen = [
   "docs/99_arbeitsjournal.md",
-  "docs/16_alpaca_umstellung_2026-07.md",
-  "docs/18_berechnungsgrundlagen_abgaben.md",
 ]
 
 # Vorlage fuer weitere Projekte:

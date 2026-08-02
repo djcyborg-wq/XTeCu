@@ -277,7 +277,11 @@ class Dienst:
         def arbeiten() -> None:
             begonnen = time.monotonic()
             try:
-                antwort = sitzung.frage(text)
+                with Lebenszeichen(self._bot, n.chat_id, sitzung,
+                                   self._cfg.lauf_timeout) as puls:
+                    antwort = sitzung.frage(text)
+                if puls.abgewuergt:
+                    return  # der Abbruch wurde schon gemeldet
             except Exception as exc:
                 logger.exception("Agentenlauf gescheitert")
                 antwort = (f"Der Agent kam nicht durch: "
@@ -295,6 +299,62 @@ class Dienst:
         self._arbeiter = threading.Thread(target=arbeiten, daemon=True,
                                           name="xtecu-arbeiter")
         self._arbeiter.start()
+
+
+class Lebenszeichen:
+    """Zeigt, dass noch gearbeitet wird - und beendet, was zu lange braucht.
+
+    Ein Agentenlauf kann Minuten dauern, etwa wenn er sich erst in Unterlagen
+    einliest. Telegrams Tippanzeige verfaellt nach fuenf Sekunden; ohne
+    Auffrischung sitzt man vor einem stummen Chat und weiss nicht, ob der
+    Auftrag ueberhaupt angekommen ist (erlebt am 02.08.2026).
+
+    Also: Tippanzeige alle vier Sekunden, nach einer Weile eine kurze
+    Zwischenmeldung, und nach ``grenze`` Sekunden der Abbruch - sonst haenge
+    ein stiller Lauf den Bot fuer alle weiteren Fragen zu.
+    """
+
+    #: Erst ab hier melden. Kurze Laeufe brauchen keine Zwischennachricht.
+    ERSTE_MELDUNG = 75
+    WEITERE_ALLE = 180
+
+    def __init__(self, bot: Bot, chat_id: int, sitzung, grenze: int) -> None:
+        self._bot = bot
+        self._chat = chat_id
+        self._sitzung = sitzung
+        self._grenze = grenze
+        self._fertig = threading.Event()
+        self.abgewuergt = False
+        self._faden = threading.Thread(target=self._laufen, daemon=True,
+                                       name="xtecu-lebenszeichen")
+
+    def __enter__(self) -> "Lebenszeichen":
+        self._faden.start()
+        return self
+
+    def __exit__(self, *_) -> None:
+        self._fertig.set()
+
+    def _laufen(self) -> None:
+        begonnen = time.monotonic()
+        naechste_meldung = self.ERSTE_MELDUNG
+        while not self._fertig.wait(4):
+            self._bot.zeige_tippt(self._chat)
+            offen = time.monotonic() - begonnen
+
+            if offen >= self._grenze:
+                self.abgewuergt = True
+                self._sitzung.abbrechen()
+                lang = (f"{self._grenze // 60} Minuten" if self._grenze >= 60
+                        else f"{self._grenze} Sekunden")
+                self._bot.sende(self._chat, f"Nach {lang} abgebrochen - da lief "
+                                            "etwas aus dem Ruder.")
+                return
+
+            if offen >= naechste_meldung:
+                naechste_meldung += self.WEITERE_ALLE
+                self._bot.sende(self._chat,
+                                f"Bin noch dran ({int(offen)}s). /stop bricht ab.")
 
 
 def _fuer_telegram(text: str) -> str:
