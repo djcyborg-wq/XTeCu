@@ -8,7 +8,26 @@ Das Verzeichnis liegt bewusst **außerhalb** aller Projekte: Ein Bot bedient
 mehrere Projekte, und die Zugangsdaten geraten so in kein Repository und auf
 keinen Server.
 
-## Starten
+Getestet unter Windows 10 mit Python 3.12. Mindestens Python 3.11 ist nötig
+(`tomllib`).
+
+## Einrichten
+
+1. **Bot anlegen.** In Telegram an [@BotFather](https://t.me/BotFather):
+   `/newbot`. Er gibt einen Token aus.
+2. **Cursor-Schlüssel holen.** [cursor.com/dashboard](https://cursor.com/dashboard)
+   → Integrations → API Keys.
+3. **`.env` anlegen.** `.env.example` kopieren und beide Werte eintragen,
+   `XTECU_CHAT_ID` erst einmal leer lassen.
+4. **`projekte.toml` anpassen** — mindestens Pfad und Einweisung des eigenen
+   Projekts.
+5. **Starten** (`.\start.ps1`), dem Bot in Telegram irgendetwas schreiben. Er
+   antwortet mit der Chat-ID. Die in die `.env` eintragen, neu starten.
+
+Der Umweg über den ersten Start ist Absicht: Bis die ID eingetragen ist, führt
+der Bot nichts aus, sondern nennt nur, wer da geschrieben hat.
+
+## Starten und beenden
 
 ```powershell
 cd C:\Users\dj_cyborg\XTeCu
@@ -24,7 +43,8 @@ Beenden mit `.\stop.ps1`. Das Schließen des Fensters genügt unter Windows
 Gegen versehentliche Zweitstarts gibt es eine Sperre — ein zweiter Dienst würde
 sich mit dem ersten die Nachrichten teilen, mit getrennten Agentensitzungen.
 
-Selbsttest vor dem Start:
+Selbsttest, wenn etwas klemmt (prüft Pfade, Bot und einen echten Agentenlauf;
+mit `--schnell` ohne den Lauf):
 
 ```powershell
 .\.venv\Scripts\python.exe pruefen.py
@@ -44,12 +64,21 @@ Jede normale Nachricht ist ein Auftrag an den Agenten im aktiven Projekt.
 | `/status` | was gerade läuft |
 | `/hilfe` | Übersicht |
 
+Es läuft immer nur **ein** Auftrag. Schreibt man währenddessen etwas, sagt der
+Bot, woran er noch arbeitet und wie lange schon — die Nachricht wird nicht
+heimlich in eine Warteschlange gelegt. Der Dienst bleibt dabei ansprechbar:
+`/stop` und `/status` kommen auch mitten in einem langen Lauf durch.
+
+Am Fuß jeder Antwort stehen Projekt, Modell und die Dauer des Laufs.
+
 ## Das Modell wechseln
 
 `/modell` zeigt eine kurze Vorschlagsliste mit Nummern; `/modell 2` schaltet
 um. Die Nummern zeigen **immer** auf diese Liste, nie auf die zuletzt
 angezeigte — sonst hinge die Bedeutung von `/modell 2` davon ab, was man vorher
-aufgerufen hat. `/modell alle` zeigt alle rund 33 Modelle zum Kopieren.
+aufgerufen hat. `/modell alle` zeigt alle rund 33 Modelle zum Kopieren,
+`/modell auffrischen` holt die Liste neu (sie wird sonst einen Tag lang
+behalten).
 
 Die Liste kommt vom Cursor-Dienst selbst, samt Anzeigenamen und der Frage,
 welche Parameter ein Modell überhaupt versteht. Hier ist also keine
@@ -93,18 +122,39 @@ Gedächtnis entsteht deshalb auf zwei Wegen:
    funktioniert — auch ein langer Chat in der Oberfläche wird irgendwann
    verdichtet. Wer will, dass der Bot etwas weiß, schreibt es in die Dokumente.
 
+## Wenn zwei Agenten am selben Verzeichnis arbeiten
+
+Sobald neben dem Bot auch jemand in der Cursor-Oberfläche an einem Projekt
+arbeitet, sehen beide dieselben Dateien, aber nicht das Gespräch des anderen.
+Änderungen bemerken sie also, die Begründung dahinter nicht.
+
+In XFlops ist das so gelöst: `docs/99_arbeitsjournal.md` nimmt beide Seiten auf
+— was getan wurde, warum, und ob es lokal liegt, committet ist oder auf dem
+Server läuft. Die Einweisung des Bots und die Regel
+`.cursor/rules/arbeitsjournal.mdc` im Projekt verlangen beides: vor dem
+Anfangen nachlesen und melden, was der andere getan hat, nach dem Ändern
+eintragen.
+
+Das löst das Nacherzählen, nicht das Gleichzeitig-Arbeiten. Fassen beide zur
+selben Zeit dieselbe Datei an, hilft kein Protokoll — am sichersten bleibt,
+nacheinander zu arbeiten.
+
 ## Neues Projekt anschließen
 
-Fünf Zeilen in `projekte.toml`, sonst nichts:
+Ein Eintrag in `projekte.toml`, sonst nichts:
 
 ```toml
 [projekt.beispiel]
 name = "Mein Projekt"
 pfad = "C:/Users/dj_cyborg/Beispiel"
-modell = "composer-2.5"
+modell = "claude-opus-5:high"
 einweisung = "Worum es geht, in wenigen Sätzen."
 unterlagen = ["README.md"]
 ```
+
+`unterlagen` sind die Dateien, die der Agent zu Beginn einer Sitzung liest —
+das Gedächtnis des Projekts. `einweisung` und `unterlagen` dürfen fehlen, dann
+fängt der Agent bei null an.
 
 ## Sicherheit
 
@@ -113,10 +163,13 @@ unterlagen = ["README.md"]
   diesen Chat kommt, hat einen Agenten mit vollen Schreibrechten in den
   Projektverzeichnissen. **Telefon mit Sperre versehen.**
 * Der Cursor-Schlüssel hat Vollzugriff auf das Cursor-Konto. Er steht in `.env`
-  und nirgends sonst.
+  und nirgends sonst. Aus Protokollmeldungen wird der Bot-Token entfernt —
+  `httpx` nennt bei Fehlern die volle URL, und die enthält ihn.
 * Der Agent arbeitet ohne Rückfrage. Er kann Dateien ändern, Befehle ausführen
   und — im XFlops-Projekt — auf den Server ausrollen. Wer das enger will,
   schreibt es in die `einweisung` des Projekts.
+* Beim Start wirft der Dienst alles weg, was während seiner Auszeit aufgelaufen
+  ist. Sonst arbeitete er Befehle von gestern ab.
 
 ## Aufbau
 
@@ -130,7 +183,16 @@ unterlagen = ["README.md"]
 | `xtecu/windows_bruecke.py` | Ersatz für einen SDK-Fehler unter Windows |
 | `xtecu/sperre.py` | verhindert einen zweiten Dienst am selben Bot |
 | `projekte.toml` | Projektregister |
-| `zustand/` | gemerkte Agenten-IDs |
+| `pruefen.py` | Selbsttest |
+| `start.ps1` / `stop.ps1` | Dienst starten und beenden |
+| `zustand/` | Agenten-ID und Modellwahl je Projekt, Modellliste, Sperre |
+
+Der Hauptfaden wartet auf Nachrichten und bleibt dabei immer ansprechbar; die
+eigentliche Arbeit läuft in einem zweiten Faden. Nur so kann während eines
+langen Agentenlaufs noch ein `/stop` ankommen.
+
+Nichts in `zustand/` ist unersetzlich — wird der Ordner gelöscht, beginnen die
+Gespräche von vorn und die Modellliste wird neu geholt.
 
 ### Der Windows-Ersatz
 
@@ -143,3 +205,8 @@ leistet, aber `stderr` in einem Hintergrundfaden blockierend liest. Das
 Zeilenformat kommt weiter aus dem SDK, damit wir bei einer Formatänderung nicht
 auseinanderlaufen. Fällt der Ersatz eines Tages weg, weil der SDK das selbst
 behebt, meldet sich `anwenden()` einfach nicht mehr zuständig.
+
+Der Ersatz wird in `xtecu/__init__.py` gesetzt, also beim ersten Import des
+Pakets. Das nimmt die Reihenfolge aus dem Spiel: Sonst hinge es daran, welches
+Modul zufällig zuerst den SDK importiert — ein Fehler, in den `pruefen.py`
+prompt gelaufen ist.

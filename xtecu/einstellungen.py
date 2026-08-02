@@ -35,6 +35,11 @@ def _env_laden() -> None:
         os.environ.setdefault(name.strip(), wert.strip())
 
 
+#: Wenn ein Projekt kein Modell nennt. Kurzform wie in ``modelle.py``
+#: beschrieben - Kennung, dahinter die Gruendlichkeit.
+STANDARDMODELL = "claude-opus-5:high"
+
+
 @dataclass
 class Projekt:
     """Ein Arbeitsverzeichnis, das der Bot bedienen kann."""
@@ -42,7 +47,7 @@ class Projekt:
     schluessel: str
     name: str
     pfad: str
-    modell: str = "composer-2.5"
+    modell: str = STANDARDMODELL
     einweisung: str = ""
     #: Dateien, die der Agent zu Beginn einer Sitzung lesen soll. Sie sind das
     #: Gedaechtnis des Projekts - der Agent kennt den Chatverlauf nicht, wohl
@@ -88,7 +93,7 @@ def laden() -> Konfiguration:
             schluessel=schluessel,
             name=eintrag.get("name", schluessel),
             pfad=eintrag["pfad"],
-            modell=eintrag.get("modell", "composer-2.5"),
+            modell=eintrag.get("modell", STANDARDMODELL),
             einweisung=eintrag.get("einweisung", "").strip(),
             unterlagen=list(eintrag.get("unterlagen", [])),
         )
