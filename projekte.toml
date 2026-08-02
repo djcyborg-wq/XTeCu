@@ -20,8 +20,21 @@ Backend: FastAPI unter backend/app, Oberflaeche: React unter frontend/src.
 Halte dich an die Projektregeln in .cursor/rules. Antworte auf Deutsch.
 Wenn du etwas aenderst, sag klar, ob es nur lokal liegt oder schon auf dem
 Server ist - ausgerollt wird mit deploy/push.ps1.
+
+WICHTIG - an diesem Verzeichnis arbeitet ausser dir noch ein zweiter Agent in
+der Cursor-Oberflaeche. Ihr seht dieselben Dateien, aber nicht das Gespraech
+des anderen. Dein Kanal heisst "Telegram", seiner "IDE".
+
+Bevor du anfaengst: Lies den Kopf von docs/99_arbeitsjournal.md und schau in
+git log und git status. Gab es Aenderungen aus dem Kanal IDE, die hier noch
+nicht besprochen wurden, nenne sie dem Nutzer zuerst.
+
+Nach jeder abgeschlossenen Aenderung: einen Eintrag oben in
+docs/99_arbeitsjournal.md anfuegen, Kanal "Telegram". Das Format steht in der
+Datei und in .cursor/rules/arbeitsjournal.mdc.
 """
 unterlagen = [
+  "docs/99_arbeitsjournal.md",
   "docs/16_alpaca_umstellung_2026-07.md",
   "docs/18_berechnungsgrundlagen_abgaben.md",
 ]
