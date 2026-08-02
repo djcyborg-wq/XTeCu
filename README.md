@@ -36,12 +36,36 @@ Jede normale Nachricht ist ein Auftrag an den Agenten im aktiven Projekt.
 
 | Befehl | Wirkung |
 | --- | --- |
+| `/modell` | Modelle anzeigen, `/modell 2` schaltet um |
 | `/projekt` | Projekte anzeigen |
 | `/projekt xflops` | umschalten |
 | `/neu` | Gespräch von vorn beginnen |
 | `/stop` | laufenden Auftrag abbrechen |
 | `/status` | was gerade läuft |
 | `/hilfe` | Übersicht |
+
+## Das Modell wechseln
+
+`/modell` zeigt eine kurze Vorschlagsliste mit Nummern; `/modell 2` schaltet
+um. Die Nummern zeigen **immer** auf diese Liste, nie auf die zuletzt
+angezeigte — sonst hinge die Bedeutung von `/modell 2` davon ab, was man vorher
+aufgerufen hat. `/modell alle` zeigt alle rund 33 Modelle zum Kopieren.
+
+Die Liste kommt vom Cursor-Dienst selbst, samt Anzeigenamen und der Frage,
+welche Parameter ein Modell überhaupt versteht. Hier ist also keine
+Namensliste gepflegt, die veralten könnte — nur die Reihenfolge der Vorschläge
+steht in `FAVORITEN` in `xtecu/modelle.py`.
+
+Geschrieben wird ein Modell als Kurzform: `claude-opus-5:high`. Hinter dem
+Doppelpunkt steht, wie gründlich gedacht werden soll (`low` bis `max`),
+dazu wahlweise `fast` und `1m` für das große Kontextfenster. Zusätze, die ein
+Modell nicht kennt, fallen still weg — `composer-2.5:max` läuft also einfach
+ohne Denkstufe, statt den Auftrag scheitern zu lassen.
+
+Umschalten geht **mitten im Gespräch**: Der Agent bleibt derselbe, nur der
+Denker wechselt. Getestet — nach dem Wechsel wusste das neue Modell noch, was
+im Gespräch davor stand. Die Wahl gilt je Projekt und überlebt einen Neustart;
+der Ausgangswert steht in `projekte.toml`.
 
 ## Was das Warten kostet
 
@@ -101,6 +125,7 @@ unterlagen = ["README.md"]
 | `xtecu/dienst.py` | Hauptschleife, Befehle |
 | `xtecu/telegram.py` | Longpolling, Senden, Nachrichten teilen |
 | `xtecu/agent.py` | Cursor-SDK, Sitzung je Projekt |
+| `xtecu/modelle.py` | Modellliste vom Dienst, Kurzform auflösen |
 | `xtecu/einstellungen.py` | `.env` und `projekte.toml` lesen |
 | `xtecu/windows_bruecke.py` | Ersatz für einen SDK-Fehler unter Windows |
 | `xtecu/sperre.py` | verhindert einen zweiten Dienst am selben Bot |

@@ -27,6 +27,7 @@ from pathlib import Path
 
 from . import windows_bruecke
 from .einstellungen import ZUSTAND, Konfiguration, Projekt
+from .modelle import Katalog
 
 windows_bruecke.anwenden()
 
@@ -38,33 +39,57 @@ logger = logging.getLogger("xtecu.agent")
 class Sitzung:
     """Ein fortlaufendes Gespraech zu einem Projekt."""
 
-    def __init__(self, cfg: Konfiguration, projekt: Projekt) -> None:
+    def __init__(self, cfg: Konfiguration, projekt: Projekt,
+                 katalog: Katalog) -> None:
         self._cfg = cfg
         self._projekt = projekt
+        self._katalog = katalog
         self._merker = ZUSTAND / f"{projekt.schluessel}.json"
-        self._agent_id: str | None = self._gemerkte_id()
+        self._agent_id: str | None = None
+        self._modell: str | None = None
+        self._laden()
         self._laufend = None
         self._sperre = threading.Lock()
 
     # -- Gedaechtnis auf Platte --------------------------------------- #
 
-    def _gemerkte_id(self) -> str | None:
+    def _laden(self) -> None:
         if not self._merker.exists():
-            return None
+            return
         try:
-            return json.loads(self._merker.read_text("utf-8")).get("agent_id")
+            roh = json.loads(self._merker.read_text("utf-8"))
         except Exception:
-            return None
+            return
+        self._agent_id = roh.get("agent_id")
+        self._modell = roh.get("modell")
+
+    def _sichern(self) -> None:
+        self._merker.write_text(json.dumps(
+            {"agent_id": self._agent_id, "modell": self._modell}), "utf-8")
 
     def _merke(self, agent_id: str | None) -> None:
         self._agent_id = agent_id
-        if agent_id:
-            self._merker.write_text(json.dumps({"agent_id": agent_id}), "utf-8")
-        elif self._merker.exists():
-            self._merker.unlink()
+        self._sichern()
 
     def neu_beginnen(self) -> None:
         self._merke(None)
+
+    # -- Modellwahl ---------------------------------------------------- #
+
+    @property
+    def modell(self) -> str:
+        """Die gewaehlte Kurzform, sonst die aus ``projekte.toml``."""
+        return self._modell or self._projekt.modell
+
+    def modell_setzen(self, kurz: str) -> None:
+        """Umschalten, ohne den Gespraechsfaden zu verlieren.
+
+        Der Agent bleibt derselbe; das Modell steckt in den Optionen, die beim
+        Fortsetzen erneut mitgehen. Man kann also mitten im Gespraech von einem
+        schnellen auf ein gruendliches Modell wechseln.
+        """
+        self._modell = kurz
+        self._sichern()
 
     @property
     def laeuft_schon(self) -> bool:
@@ -101,7 +126,7 @@ class Sitzung:
 
             optionen = AgentOptions(
                 api_key=self._cfg.cursor_key,
-                model=self._projekt.modell,
+                model=self._katalog.auswahl(self.modell),
                 local=LocalAgentOptions(cwd=self._projekt.pfad),
             )
 
@@ -157,9 +182,11 @@ class Sitzungen:
 
     def __init__(self, cfg: Konfiguration) -> None:
         self._cfg = cfg
+        self.katalog = Katalog(cfg.cursor_key)
         self._nach_projekt: dict[str, Sitzung] = {}
 
     def fuer(self, projekt: Projekt) -> Sitzung:
         if projekt.schluessel not in self._nach_projekt:
-            self._nach_projekt[projekt.schluessel] = Sitzung(self._cfg, projekt)
+            self._nach_projekt[projekt.schluessel] = Sitzung(
+                self._cfg, projekt, self.katalog)
         return self._nach_projekt[projekt.schluessel]

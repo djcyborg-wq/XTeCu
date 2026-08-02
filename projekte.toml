@@ -10,7 +10,9 @@ standard = "xflops"
 [projekt.xflops]
 name = "XFlops"
 pfad = "C:/Users/dj_cyborg/XFlops"
-modell = "composer-2.5"
+# Kurzform: Kennung, dahinter die Gruendlichkeit. Umschalten geht auch im
+# Gespraech mit /modell - das gilt dann, bis es wieder geaendert wird.
+modell = "claude-opus-5:high"
 einweisung = """
 XFlops sucht abgestuerzte US-Aktien ("Flops"), prognostiziert per ML den
 Rebound und handelt ihn ueber Alpaca. Die Produktion laeuft auf einem
@@ -44,6 +46,6 @@ unterlagen = [
 # [projekt.beispiel]
 # name = "Mein Projekt"
 # pfad = "C:/Users/dj_cyborg/Beispiel"
-# modell = "composer-2.5"
+# modell = "claude-opus-5:high"
 # einweisung = "Worum es geht, in wenigen Saetzen."
 # unterlagen = ["README.md"]

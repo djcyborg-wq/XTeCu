@@ -14,7 +14,7 @@ import threading
 import time
 from datetime import datetime
 
-from . import sperre
+from . import modelle, sperre
 from .agent import Sitzungen
 from .einstellungen import Konfiguration, Projekt, laden
 from .telegram import Bot, Nachricht
@@ -91,6 +91,7 @@ class Dienst:
                 "/start": self._hilfe, "/hilfe": self._hilfe,
                 "/help": self._hilfe,
                 "/projekt": self._projekt, "/projekte": self._projekt,
+                "/modell": self._modell, "/modelle": self._modell,
                 "/neu": self._neu,
                 "/stop": self._stop,
                 "/status": self._status,
@@ -115,6 +116,8 @@ class Dienst:
             "Schreib einfach los, jede normale Nachricht geht als Auftrag an "
             "den Agenten im aktiven Projekt.\n\n"
             "<b>Befehle</b>\n"
+            "  <code>/modell</code> - Modelle zeigen, <code>/modell 2</code> "
+            "schaltet um\n"
             "  <code>/projekt</code> - Projekte zeigen\n"
             "  <code>/projekt xflops</code> - umschalten\n"
             "  <code>/neu</code> - Gespraech von vorn beginnen\n"
@@ -152,6 +155,70 @@ class Dienst:
                         f"Jetzt am Projekt <b>{self._aktuell.name}</b>."
                         + hinweis)
 
+    def _modell(self, n: Nachricht, rest: str) -> None:
+        """Modell zeigen oder umschalten.
+
+        Die Ziffern zeigen immer auf die Favoritenliste, nie auf die zuletzt
+        angezeigte - sonst hinge die Bedeutung von <code>/modell 2</code> davon
+        ab, was man vorher aufgerufen hat.
+        """
+        katalog = self._sitzungen.katalog
+        sitzung = self._sitzungen.fuer(self._aktuell)
+        favoriten = katalog.favoriten()
+        wunsch = rest.strip().lower()
+
+        if wunsch in ("alle", "all"):
+            zeilen = [f"<code>{m.id}</code> — {m.name}" for m in katalog.alle()]
+            self._bot.sende(n.chat_id,
+                "<b>Alle Modelle</b>\n" + "\n".join(zeilen)
+                + "\n\nUmschalten mit der Kennung, Gründlichkeit anhängen:\n"
+                  "<code>/modell claude-sonnet-5:high</code>")
+            return
+
+        if wunsch in ("auffrischen", "aktualisieren"):
+            try:
+                self._bot.sende(n.chat_id,
+                                f"{katalog.auffrischen()} Modelle geholt.")
+            except Exception as exc:
+                self._bot.sende(n.chat_id, "Die Liste war nicht zu erreichen: "
+                                + html.escape(str(exc)[:200]))
+            return
+
+        if not wunsch:
+            zeilen = []
+            for i, kurz in enumerate(favoriten, 1):
+                marke = " <b>(aktiv)</b>" if kurz == sitzung.modell else ""
+                zeilen.append(f"<b>{i}</b>  {katalog.name(kurz)}{marke}")
+            jetzt = katalog.name(sitzung.modell)
+            fremd = "" if sitzung.modell in favoriten else \
+                f"\n\nZurzeit eingestellt: <b>{jetzt}</b> " \
+                f"(<code>{html.escape(sitzung.modell)}</code>)"
+            self._bot.sende(n.chat_id,
+                "<b>Modell</b>\n" + "\n".join(zeilen) + fremd
+                + "\n\n<code>/modell 2</code> schaltet um.\n"
+                  "<code>/modell alle</code> zeigt die vollständige Liste.")
+            return
+
+        if wunsch.isdigit():
+            i = int(wunsch)
+            if not 1 <= i <= len(favoriten):
+                self._bot.sende(n.chat_id,
+                                f"Es gibt die Nummern 1 bis {len(favoriten)}.")
+                return
+            neu = favoriten[i - 1]
+        else:
+            neu = wunsch
+            if not katalog.gibt_es(modelle.kennung(neu)):
+                self._bot.sende(n.chat_id,
+                    f"<code>{html.escape(modelle.kennung(neu))}</code> kenne "
+                    "ich nicht. <code>/modell alle</code> zeigt die Liste.")
+                return
+
+        sitzung.modell_setzen(neu)
+        self._bot.sende(n.chat_id,
+                        f"Jetzt <b>{katalog.name(neu)}</b>. Das Gespräch läuft "
+                        "weiter, nur der Denker wechselt.")
+
     def _neu(self, n: Nachricht, rest: str) -> None:
         if self._beschaeftigt_seit is not None:
             self._bot.sende(n.chat_id, "Es laeuft noch ein Auftrag. Erst /stop.")
@@ -174,9 +241,10 @@ class Dienst:
 
     def _status(self, n: Nachricht, rest: str) -> None:
         if self._beschaeftigt_seit is None:
+            s = self._sitzungen.fuer(self._aktuell)
             self._bot.sende(n.chat_id,
-                            f"Nichts zu tun. Projekt <b>{self._aktuell.name}</b>, "
-                            f"Modell <code>{self._aktuell.modell}</code>.")
+                            f"Nichts zu tun.\nProjekt <b>{self._aktuell.name}</b>"
+                            f"\nModell <b>{self._sitzungen.katalog.name(s.modell)}</b>")
             return
         dauer = int(time.monotonic() - self._beschaeftigt_seit)
         self._bot.sende(n.chat_id,
@@ -203,11 +271,13 @@ class Dienst:
         self._letzte_frage = text
         self._beschaeftigt_seit = time.monotonic()
         self._bot.zeige_tippt(n.chat_id)
+        sitzung = self._sitzungen.fuer(self._aktuell)
+        modell = sitzung.modell
 
         def arbeiten() -> None:
             begonnen = time.monotonic()
             try:
-                antwort = self._sitzungen.fuer(self._aktuell).frage(text)
+                antwort = sitzung.frage(text)
             except Exception as exc:
                 logger.exception("Agentenlauf gescheitert")
                 antwort = (f"Der Agent kam nicht durch: "
@@ -217,8 +287,9 @@ class Dienst:
                 self._beschaeftigt_seit = None
 
             dauer = time.monotonic() - begonnen
-            fuss = (f"\n\n<i>{self._aktuell.name} - {dauer:.0f}s - "
-                    f"{datetime.now():%H:%M}</i>")
+            fuss = (f"\n\n<i>{self._aktuell.name} · "
+                    f"{self._sitzungen.katalog.name(modell)} · "
+                    f"{dauer:.0f}s · {datetime.now():%H:%M}</i>")
             self._bot.sende(n.chat_id, _fuer_telegram(antwort) + fuss)
 
         self._arbeiter = threading.Thread(target=arbeiten, daemon=True,
