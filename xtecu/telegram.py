@@ -36,6 +36,7 @@ class Bot:
         self._token = token
         self._timeout = timeout
         self._offset: int | None = None
+        self._fehlversuche = 0
         # Lesetimeout ueber der Longpoll-Dauer, sonst bricht httpx die
         # Verbindung ab, bevor Telegram antwortet.
         self._klient = httpx.Client(timeout=httpx.Timeout(timeout + 15))
@@ -69,10 +70,19 @@ class Bot:
                             offset=self._offset,
                             allowed_updates=["message"])
         except Exception as exc:
-            logger.warning("Abfrage fehlgeschlagen (%s) - neuer Versuch",
-                           self._ohne_token(exc))
+            self._fehlversuche += 1
+            logger.warning("Abfrage fehlgeschlagen (%s) - Versuch %d",
+                           self._ohne_token(exc), self._fehlversuche)
             time.sleep(5)
             return []
+
+        if self._fehlversuche:
+            # Ohne diese Zeile bliebe eine einzelne Warnung zweideutig: Man
+            # saehe nicht, ob der Dienst sich wieder gefangen hat oder seit
+            # Stunden alle fuenf Sekunden vergeblich anklopft.
+            logger.info("Verbindung wieder da (nach %d Fehlversuch(en))",
+                        self._fehlversuche)
+            self._fehlversuche = 0
 
         out: list[Nachricht] = []
         for u in roh or []:
