@@ -32,8 +32,19 @@ from .modelle import Katalog
 windows_bruecke.anwenden()
 
 from cursor_sdk import Agent, AgentOptions, LocalAgentOptions  # noqa: E402
+from cursor_sdk.errors import (InternalServerError,  # noqa: E402
+                               NetworkError, RateLimitError)
 
 logger = logging.getLogger("xtecu.agent")
+
+#: Stoerungen, die nichts mit dem Auftrag zu tun haben und meist von selbst
+#: vergehen. Am 04.08.2026 lieferte der Cursor-Dienst dreimal binnen zwei
+#: Minuten "internal error", danach lief alles wieder.
+VORUEBERGEHEND = (InternalServerError, NetworkError, RateLimitError)
+
+#: Wartezeiten vor dem naechsten Versuch. Wiederholt wird nur das Absenden -
+#: dabei ist noch kein Lauf entstanden, den man doppelt starten koennte.
+WARTEN = (8, 20)
 
 
 class Sitzung:
@@ -118,6 +129,25 @@ class Sitzung:
 
     # -- Lauf ---------------------------------------------------------- #
 
+    def _absenden(self, agent, auftrag: str):
+        """Auftrag absenden, voruebergehende Stoerungen aussitzen.
+
+        Wiederholt wird ausschliesslich das Absenden. Scheitert es, ist noch
+        kein Lauf entstanden - es kann also keiner doppelt starten. Sobald der
+        Lauf steht, wird nichts mehr wiederholt.
+        """
+        for versuch, pause in enumerate((*WARTEN, None), start=1):
+            try:
+                return agent.send(auftrag)
+            except VORUEBERGEHEND as exc:
+                if pause is None:
+                    raise
+                logger.warning(
+                    "Absenden gescheitert (%s: %s) - Versuch %d von %d, "
+                    "warte %ds", type(exc).__name__, str(exc)[:120],
+                    versuch, len(WARTEN) + 1, pause)
+                time.sleep(pause)
+
     def frage(self, text: str) -> str:
         """Eine Frage stellen und die Antwort abwarten."""
         with self._sperre:
@@ -144,7 +174,7 @@ class Sitzung:
                 agent = Agent.create(optionen)
 
             try:
-                lauf = agent.send(auftrag)
+                lauf = self._absenden(agent, auftrag)
                 self._laufend = lauf
                 kennung = getattr(lauf, "id", "?")
                 logger.info("Lauf %s gestartet (Agent %s, Modell %s)",

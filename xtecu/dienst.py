@@ -284,9 +284,7 @@ class Dienst:
                     return  # der Abbruch wurde schon gemeldet
             except Exception as exc:
                 logger.exception("Agentenlauf gescheitert")
-                antwort = (f"Der Agent kam nicht durch: "
-                           f"{html.escape(type(exc).__name__)}: "
-                           f"{html.escape(str(exc)[:400])}")
+                antwort = _fehlertext(exc)
             finally:
                 self._beschaeftigt_seit = None
 
@@ -360,6 +358,32 @@ class Lebenszeichen:
                 naechste_meldung += self.WEITERE_ALLE
                 self._bot.sende(self._chat,
                                 f"Bin noch dran ({int(offen)}s). /stop bricht ab.")
+
+
+def _fehlertext(exc: Exception) -> str:
+    """Aus einer Ausnahme etwas machen, das auf einem Telefon weiterhilft.
+
+    Frueher stand hier nur der Klassenname und die rohe Meldung. Bei einer
+    Stoerung des Cursor-Dienstes las sich das wie ein Programmfehler, obwohl
+    nichts zu tun war ausser abzuwarten.
+    """
+    from cursor_sdk.errors import (AuthenticationError, InternalServerError,
+                                   NetworkError, RateLimitError)
+
+    if isinstance(exc, InternalServerError):
+        return ("Der Cursor-Dienst hat gerade eine Störung gemeldet, auch nach "
+                "mehreren Versuchen. Das liegt nicht am Auftrag — in ein paar "
+                "Minuten nochmal fragen.")
+    if isinstance(exc, RateLimitError):
+        return "Zu viele Anfragen auf einmal. Kurz warten, dann nochmal."
+    if isinstance(exc, NetworkError):
+        return ("Keine Verbindung zum Cursor-Dienst bekommen. Läuft das Netz "
+                "auf dem Rechner noch?")
+    if isinstance(exc, AuthenticationError):
+        return ("Der Cursor-Schlüssel wird nicht angenommen. Er steht in der "
+                "<code>.env</code> und muss vielleicht erneuert werden.")
+    return (f"Der Agent kam nicht durch: {html.escape(type(exc).__name__)}: "
+            f"{html.escape(str(exc)[:400])}")
 
 
 def _fuer_telegram(text: str) -> str:

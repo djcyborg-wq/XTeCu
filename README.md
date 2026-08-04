@@ -107,6 +107,19 @@ Denker wechselt. Getestet — nach dem Wechsel wusste das neue Modell noch, was
 im Gespräch davor stand. Die Wahl gilt je Projekt und überlebt einen Neustart;
 der Ausgangswert steht in `projekte.toml`.
 
+## Wenn etwas schiefgeht
+
+Störungen des Cursor-Dienstes gehen meist von selbst vorbei. Das Absenden eines
+Auftrags wird deshalb bis zu zweimal wiederholt (nach 8 und 20 Sekunden) —
+allerdings nur das **Absenden**, denn solange kein Lauf entstanden ist, kann
+auch keiner doppelt starten. Bleibt die Störung, bekommt man einen Satz, der
+sagt, woran es liegt, statt eines Fehlerprotokolls.
+
+Im Protokoll des Dienstes steht zu jedem Lauf Start, Status, Dauer und
+Antwortlänge; eine gestörte Telegram-Abfrage wird gezählt und die Erholung
+ausdrücklich vermerkt. Eine einzelne Warnung ohne Folgemeldung wäre sonst nicht
+von einem Dauerausfall zu unterscheiden.
+
 ## Was das Warten kostet
 
 Nichts. Gewartet wird per Longpolling: eine HTTP-Verbindung, die bis zu 50
