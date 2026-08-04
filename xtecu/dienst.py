@@ -348,8 +348,12 @@ class Lebenszeichen:
                 self._sitzung.abbrechen()
                 lang = (f"{self._grenze // 60} Minuten" if self._grenze >= 60
                         else f"{self._grenze} Sekunden")
-                self._bot.sende(self._chat, f"Nach {lang} abgebrochen - da lief "
-                                            "etwas aus dem Ruder.")
+                self._bot.sende(
+                    self._chat,
+                    f"Nach {lang} abgebrochen - da lief etwas aus dem Ruder."
+                    "\n\nAchtung: Wenn der Agent unterwegs schon Dateien "
+                    "geändert hat, liegen sie jetzt halbfertig da. Ein Blick "
+                    "in <code>git status</code> lohnt sich.")
                 return
 
             if offen >= naechste_meldung:

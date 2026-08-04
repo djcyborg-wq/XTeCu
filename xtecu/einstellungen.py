@@ -68,8 +68,15 @@ class Konfiguration:
     #: Sekunden, die eine Telegram-Abfrage offenhaelt. Reine Netzwerkwartezeit,
     #: kein Modell - das Warten kostet nichts.
     abfrage_timeout: int = 50
-    #: Obergrenze fuer einen einzelnen Agentenlauf.
-    lauf_timeout: int = 900
+    #: Obergrenze fuer einen einzelnen Agentenlauf, in Sekunden.
+    #:
+    #: Grosszuegig gewaehlt, weil ein Abbruch teuer ist: Hat der Agent bis
+    #: dahin schon Dateien geaendert, bleiben sie halbfertig liegen. Am
+    #: 04.08.2026 traf eine Grenze von 15 Minuten einen Auftrag, der offenbar
+    #: nur gruendlich war. Die Grenze soll nur den Fall abfangen, dass ein Lauf
+    #: gar nicht mehr zurueckkommt und alle weiteren Fragen blockiert - gegen
+    #: einen zu langen Lauf gibt es das Lebenszeichen und /stop.
+    lauf_timeout: int = 45 * 60
 
     def projekt(self, schluessel: str | None) -> Projekt:
         return self.projekte[schluessel or self.standard]
@@ -105,10 +112,19 @@ def laden() -> Konfiguration:
         raise SystemExit(f"Standardprojekt '{standard}' ist nicht angelegt.")
 
     ZUSTAND.mkdir(exist_ok=True)
-    return Konfiguration(
+    cfg = Konfiguration(
         cursor_key=os.environ["CURSOR_API_KEY"],
         bot_token=os.environ["XTECU_BOT_TOKEN"],
         chat_id=os.environ.get("XTECU_CHAT_ID", "").strip(),
         projekte=projekte,
         standard=standard,
     )
+
+    minuten = os.environ.get("XTECU_LAUF_GRENZE_MIN", "").strip()
+    if minuten:
+        try:
+            cfg.lauf_timeout = max(60, int(float(minuten) * 60))
+        except ValueError:
+            raise SystemExit(
+                f"XTECU_LAUF_GRENZE_MIN ist keine Zahl: {minuten!r}")
+    return cfg

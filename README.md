@@ -71,9 +71,14 @@ heimlich in eine Warteschlange gelegt. Der Dienst bleibt dabei ansprechbar:
 
 Ein Lauf kann Minuten dauern. Damit man nicht vor einem stummen Chat sitzt,
 bleibt die Tippanzeige durchgehend stehen, nach 75 Sekunden kommt eine kurze
-Zwischenmeldung und danach alle drei Minuten eine weitere. Nach 15 Minuten
-bricht der Bot ab — weil immer nur ein Auftrag läuft, würde ein stiller Lauf
-sonst alle weiteren Fragen blockieren.
+Zwischenmeldung und danach alle drei Minuten eine weitere.
+
+Nach 45 Minuten bricht der Bot ab (`XTECU_LAUF_GRENZE_MIN` in der `.env`).
+Diese Grenze ist bewusst großzügig: Sie soll nur den Fall abfangen, dass ein
+Lauf gar nicht mehr zurückkommt und damit alle weiteren Fragen blockiert —
+gegen einen bloß langen Lauf gibt es die Zwischenmeldungen und `/stop`. Ein
+Abbruch ist teuer, denn hat der Agent unterwegs schon Dateien geändert, bleiben
+sie halbfertig liegen; der Bot weist beim Abbruch darauf hin.
 
 Am Fuß jeder Antwort stehen Projekt, Modell und die Dauer des Laufs.
 
