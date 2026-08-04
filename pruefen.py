@@ -45,11 +45,20 @@ if "--schnell" not in sys.argv:
     print("\n== Cursor ==")
     from cursor_sdk import Agent, AgentOptions, LocalAgentOptions
 
+    from xtecu.modelle import Katalog
+
     projekt = cfg.projekt(None)
+    # Ueber den Katalog, genau wie der Dienst. Die Kurzform "id:high" darf
+    # nicht roh an den SDK gehen - er kennt nur die nackte Kennung und lehnt
+    # sie sonst ab. Ein Selbsttest, der anders vorgeht als der Dienst, meldet
+    # Fehler, die es nicht gibt.
+    katalog = Katalog(cfg.cursor_key)
     try:
+        sagen(True, f"Modell {katalog.name(projekt.modell)}")
         e = Agent.prompt(
             "Antworte nur mit dem Wort: bereit",
-            AgentOptions(api_key=cfg.cursor_key, model=projekt.modell,
+            AgentOptions(api_key=cfg.cursor_key,
+                         model=katalog.auswahl(projekt.modell),
                          local=LocalAgentOptions(cwd=projekt.pfad)))
         sagen(e.status == "finished",
               f"Agentenlauf {e.status}: {(e.result or '').strip()[:60]}")

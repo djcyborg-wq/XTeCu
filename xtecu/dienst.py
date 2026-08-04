@@ -344,6 +344,7 @@ class Lebenszeichen:
 
             if offen >= self._grenze:
                 self.abgewuergt = True
+                logger.warning("Lauf nach %.0fs abgebrochen - Zeitgrenze", offen)
                 self._sitzung.abbrechen()
                 lang = (f"{self._grenze // 60} Minuten" if self._grenze >= 60
                         else f"{self._grenze} Sekunden")

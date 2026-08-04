@@ -23,7 +23,7 @@ from __future__ import annotations
 import json
 import logging
 import threading
-from pathlib import Path
+import time
 
 from . import windows_bruecke
 from .einstellungen import ZUSTAND, Konfiguration, Projekt
@@ -146,9 +146,18 @@ class Sitzung:
             try:
                 lauf = agent.send(auftrag)
                 self._laufend = lauf
-                logger.info("Lauf %s gestartet (Agent %s)",
-                            getattr(lauf, "id", "?"), agent.agent_id)
+                kennung = getattr(lauf, "id", "?")
+                logger.info("Lauf %s gestartet (Agent %s, Modell %s)",
+                            kennung, agent.agent_id, self.modell)
+                begonnen = time.monotonic()
                 ergebnis = lauf.wait()
+                # Ohne diese Zeile stehen im Protokoll nur Starts. Dann laesst
+                # sich hinterher nicht sagen, ob ein Lauf lange brauchte oder
+                # gar nicht zurueckkam - genau die Frage, die am 02.08.2026
+                # eine Viertelstunde Suchen kostete.
+                logger.info("Lauf %s %s nach %.0fs (%d Zeichen)", kennung,
+                            ergebnis.status, time.monotonic() - begonnen,
+                            len(ergebnis.result or ""))
                 self._merke(agent.agent_id)
 
                 if ergebnis.status == "error":
