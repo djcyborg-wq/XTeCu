@@ -13,10 +13,11 @@ import re
 import threading
 import time
 from datetime import datetime
+from logging.handlers import TimedRotatingFileHandler
 
 from . import modelle, sperre
 from .agent import Sitzungen
-from .einstellungen import Konfiguration, Projekt, laden
+from .einstellungen import WURZEL, Konfiguration, Projekt, laden
 from .telegram import Bot, Nachricht
 
 logger = logging.getLogger("xtecu")
@@ -403,12 +404,37 @@ def _fuer_telegram(text: str) -> str:
     return text
 
 
-def haupt() -> None:
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)-7s %(name)s  %(message)s",
-        datefmt="%H:%M:%S")
+def _protokoll_einrichten() -> None:
+    """Auf den Bildschirm und in eine Datei schreiben.
+
+    Der Dienst laeuft unbeaufsichtigt, oft tagelang. Das Startfenster ist
+    dann laengst zu oder abgeraeumt - am 05.08.2026 war das Protokoll von
+    24 Stunden nur noch zufaellig zu retten, obwohl der Dienst selbst
+    weiterlief. Die Datei ueberlebt das Fenster.
+    """
+    ordner = WURZEL / "logs"
+    ordner.mkdir(exist_ok=True)
+
+    kurz = logging.Formatter("%(asctime)s %(levelname)-7s %(name)s  %(message)s",
+                             datefmt="%H:%M:%S")
+    lang = logging.Formatter("%(asctime)s %(levelname)-7s %(name)s  %(message)s",
+                             datefmt="%Y-%m-%d %H:%M:%S")
+
+    schirm = logging.StreamHandler()
+    schirm.setFormatter(kurz)
+
+    # Eine Datei je Tag, zwei Wochen aufheben. Mehr braucht niemand, und so
+    # wuchert nichts unbemerkt voll.
+    datei = TimedRotatingFileHandler(ordner / "xtecu.log", when="midnight",
+                                     backupCount=14, encoding="utf-8")
+    datei.setFormatter(lang)
+
+    logging.basicConfig(level=logging.INFO, handlers=[schirm, datei])
     logging.getLogger("httpx").setLevel(logging.WARNING)
+
+
+def haupt() -> None:
+    _protokoll_einrichten()
     sperre.belegen()
     try:
         Dienst(laden()).laufen()

@@ -115,10 +115,15 @@ allerdings nur das **Absenden**, denn solange kein Lauf entstanden ist, kann
 auch keiner doppelt starten. Bleibt die Störung, bekommt man einen Satz, der
 sagt, woran es liegt, statt eines Fehlerprotokolls.
 
-Im Protokoll des Dienstes steht zu jedem Lauf Start, Status, Dauer und
-Antwortlänge; eine gestörte Telegram-Abfrage wird gezählt und die Erholung
-ausdrücklich vermerkt. Eine einzelne Warnung ohne Folgemeldung wäre sonst nicht
-von einem Dauerausfall zu unterscheiden.
+Im Protokoll steht zu jedem Lauf Start, Status, Dauer und Antwortlänge; eine
+gestörte Telegram-Abfrage wird gezählt und die Erholung ausdrücklich vermerkt.
+Eine einzelne Warnung ohne Folgemeldung wäre sonst nicht von einem Dauerausfall
+zu unterscheiden.
+
+Geschrieben wird in `logs/xtecu.log`, eine Datei je Tag, vierzehn Tage
+aufgehoben. Die Datei ist wichtiger als das Fenster: Der Dienst läuft oft
+tagelang, und wenn das Startfenster irgendwann weg ist, wäre sonst auch das
+Protokoll weg — der Dienst selbst läuft dann nämlich munter weiter.
 
 ## Was das Warten kostet
 
@@ -216,6 +221,7 @@ dem ausdrücklichen Hinweis, sie nicht auf Verdacht zu lesen.
 | `pruefen.py` | Selbsttest |
 | `start.ps1` / `stop.ps1` | Dienst starten und beenden |
 | `zustand/` | Agenten-ID und Modellwahl je Projekt, Modellliste, Sperre |
+| `logs/` | Tagesprotokolle, vierzehn Tage |
 
 Der Hauptfaden wartet auf Nachrichten und bleibt dabei immer ansprechbar; die
 eigentliche Arbeit läuft in einem zweiten Faden. Nur so kann während eines
